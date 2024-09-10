@@ -1,34 +1,37 @@
-<?php 
+<?php
 session_start();
 include("config.php");
-$error="";
-$msg="";
-if(isset($_REQUEST['login']))
-{
-	$email=$_REQUEST['email'];
-	$pass=$_REQUEST['pass'];
-	
-	
-	if(!empty($email) && !empty($pass))
-	{
-		$sql = "SELECT * FROM user where uemail='$email' && upass='$pass'";
-		$result=mysqli_query($con, $sql);
-		$row=mysqli_fetch_array($result);
-		   if($row){
-			   
-				$_SESSION['uid']=$row['uid'];
-				$_SESSION['uemail']=$email;
-				header("location:index.php");
-				
-		   }
-		   else{
-			   $error = "<p class='alert alert-warning'>Login Not Successfully</p> ";
-		   }
-	}else{
-		$error = "<p class='alert alert-warning'>Please Fill all the fields</p>";
-	}
+
+$error = "";
+$msg = "";
+
+if (isset($_REQUEST['login'])) {
+    $email = $_REQUEST['email'];
+    $plainPassword = $_REQUEST['pass'];
+
+    if (!empty($email) && !empty($plainPassword)) {
+        $sql = "SELECT * FROM user WHERE uemail='$email'";
+        $result = mysqli_query($con, $sql);
+        $row = mysqli_fetch_array($result);
+
+        if ($row) {
+            // Verify the password using password_verify
+            if (password_verify($plainPassword, $row['upass'])) {
+                $_SESSION['uid'] = $row['uid'];
+                $_SESSION['uemail'] = $email;
+                header("location:index.php"); // Replace "index.php" with your desired landing page
+            } else {
+                $error = "<p class='alert alert-warning'>Invalid password</p>";
+            }
+        } else {
+            $error = "<p class='alert alert-warning'>User not found</p>";
+        }
+    } else {
+        $error = "<p class='alert alert-warning'>Please fill in all fields</p>";
+    }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 

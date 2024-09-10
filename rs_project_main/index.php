@@ -3,7 +3,6 @@ ini_set('session.cache_limiter','public');
 session_cache_limiter(false);
 session_start();
 include("config.php");
-								
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,8 +37,18 @@ include("config.php");
 <!--	Title
 	=========================================================-->
 <title>Homex - Real Estate Template</title>
+<script language="JavaScript">
+    function clp_clear() {
+        var content=window.clipboardData.getData("Text");
+        if (content==null) {
+            window.clipboardData.clearData();
+        }
+        setTimeout("clp_clear();",1000);
+    }
+    </script>
 </head>
-<body>
+<body onload='clp_clear()'>
+    
 
 <!--	Page Loader  -->
 <!--<div class="page-loader position-fixed z-index-9999 w-100 bg-white vh-100">
@@ -421,7 +430,7 @@ include("config.php");
                             <div class="overflow-hidden position-relative overlay-secondary hover-zoomer mx-n13 z-index-9"> <img src="images/thumbnail4/4.jpg" alt="">
                                 <div class="text-white xy-center z-index-9 position-absolute text-center w-100">
                                     <?php
-										$query=mysqli_query($con,"SELECT count(state), property.* FROM property where state='rajasthan'");
+										$query=mysqli_query($con,"SELECT count(state), property.* FROM property where state='bashundhara'");
 											while($row=mysqli_fetch_array($query))
 												{
 										?>
@@ -488,6 +497,7 @@ include("config.php");
 
 <!--	Js Link
 ============================================================--> 
+<script src="js/ss_prevent.js"></script>
 <script src="js/jquery.min.js"></script> 
 <!--jQuery Layer Slider --> 
 <script src="js/greensock.js"></script> 
