@@ -15,13 +15,19 @@ if (isset($_REQUEST['login'])) {
         $row = mysqli_fetch_array($result);
 
         if ($row) {
-            // Verify the password using password_verify
-            if (password_verify($plainPassword, $row['upass'])) {
-                $_SESSION['uid'] = $row['uid'];
-                $_SESSION['uemail'] = $email;
-                header("location:index.php"); // Replace "index.php" with your desired landing page
+            // Check if the user is verified
+            if ($row['is_verified'] == 1) {
+                // Verify the password using password_verify
+                if (password_verify($plainPassword, $row['upass'])) {
+                    $_SESSION['uid'] = $row['uid'];
+                    $_SESSION['uemail'] = $email;
+                    header("location:index.php"); // Replace "index.php" with your desired landing page
+                } else {
+                    $error = "<p class='alert alert-warning'>Invalid password</p>";
+                }
             } else {
-                $error = "<p class='alert alert-warning'>Invalid password</p>";
+                // User is not verified
+                $error = "<p class='alert alert-warning'>Your email is not verified. Please check your email for the verification link or <a href='verify.php?email=$email'>click here to resend the verification email</a>.</p>";
             }
         } else {
             $error = "<p class='alert alert-warning'>User not found</p>";
@@ -31,6 +37,7 @@ if (isset($_REQUEST['login'])) {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">

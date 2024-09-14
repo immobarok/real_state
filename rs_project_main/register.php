@@ -1,5 +1,15 @@
 <?php
 include("config.php");
+//require 'vendor/autoload.php'; // PHPMailer autoload
+
+
+require 'PHPMailer/src/Exception.php';
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 $error = "";
 $msg = "";
@@ -18,56 +28,71 @@ if (isset($_REQUEST['reg'])) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "<p class='alert alert-warning'>Invalid email format</p>";
     } else {
-        // Verify reCAPTCHA response
-        $recaptchaSecret = '6LeA9TsqAAAAADoxdA1PeUjTEwjL2vpUF7UHxli0';
-        $recaptchaResponse = $_POST['g-recaptcha-response'];
+        // Check if email already exists
+        $query = "SELECT * FROM user WHERE uemail='$email'";
+        $res = mysqli_query($con, $query);
+        $num = mysqli_num_rows($res);
 
-        $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret=$recaptchaSecret&response=$recaptchaResponse");
-        $responseKeys = json_decode($response, true);
-
-        if(intval($responseKeys["success"]) !== 1) {
-            $error = "<p class='alert alert-warning'>Please verify that you are not a robot</p>";
+        if ($num == 1) {
+            $error = "<p class='alert alert-warning'>Email Id already Exists</p>";
         } else {
-            // Check if email already exists
-            $query = "SELECT * FROM user WHERE uemail='$email'";
-            $res = mysqli_query($con, $query);
-            $num = mysqli_num_rows($res);
+            if (!empty($name) && !empty($email) && !empty($phone) && !empty($plainPassword) && !empty($uimage)) {
+                // Hash the password using bcrypt
+                $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
 
-            if ($num == 1) {
-                $error = "<p class='alert alert-warning'>Email Id already Exists</p>";
-            } else {
-                if (!empty($name) && !empty($email) && !empty($phone) && !empty($plainPassword) && !empty($uimage)) {
-                    // Hash the password using bcrypt
-                    $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
+                // Generate an 8-digit verification code
+                $verificationCode = rand(10000000, 99999999);
 
-                    // Validate phone number format (adjust regex as needed)
-                    if (!preg_match("/^\d{10}$/", $phone)) {
-                        $error = "<p class='alert alert-warning'>Invalid phone number format</p>";
-                    } else {
-                        // Sanitize user input to prevent SQL injection
-                        $name = mysqli_real_escape_string($con, $name);
-                        $email = mysqli_real_escape_string($con, $email);
-                        $phone = mysqli_real_escape_string($con, $phone);
-                        $utype = mysqli_real_escape_string($con, $utype);
+                // Insert user details into the database along with the verification code
+                $sql = "INSERT INTO user (uname, uemail, uphone, upass, utype, uimage, verification_code, is_verified) 
+                        VALUES ('$name', '$email', '$phone', '$hashedPassword', '$utype', '$uimage', '$verificationCode', 0)";
+                $result = mysqli_query($con, $sql);
+                move_uploaded_file($temp_name1, "admin/user/$uimage");
 
-                        $sql = "INSERT INTO user (uname, uemail, uphone, upass, utype, uimage) VALUES ('$name', '$email', '$phone', '$hashedPassword', '$utype', '$uimage')";
-                        $result = mysqli_query($con, $sql);
-                        move_uploaded_file($temp_name1, "admin/user/$uimage");
+                if ($result) {
+                    // Send verification email
+                    $mail = new PHPMailer(true);
+                    try {
+                        $mail->isSMTP();
+                                                $mail->Host = 'smtp.gmail.com';
+                        $mail->SMTPAuth = true;
+                        $mail->Username = 'mobarokislam14@gmail.com';
+                        $mail->Password = 'byahvkpshgywlwkp';
+                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                        $mail->Port = 587;
 
-                        if ($result) {
-                            $msg = "<p class='alert alert-success'>Registered Successfully</p>";
-                        } else {
-                            $error = "<p class='alert alert-warning'>Registration Not Successful</p>";
-                        }
+                        $mail->setFrom('mobarokislam@gmail.com', 'real_state_homex');
+                        $mail->addAddress($email);
+
+
+                        $mail->isHTML(true);
+                        $mail->Subject = 'Email Verification';
+                        $mail->Body = "Hi $name,<br><br>Your verification code is: <strong>$verificationCode</strong><br><br>
+                        Please click on the link below to verify your email:<br>
+                        <a href='http://localhost/real_state/rs_project_main/verify.php?email=$email'>Click here to verify your email</a>";
+
+                        $mail->send();
+
+                        // Show success message with a link to the verification page
+                        $msg = "<p class='alert alert-success'>Registration Successful! A verification email has been sent to $email.<br>
+                                Please <a href='verify.php?email=$email'>click here</a> to verify your email.</p>";
+                    } catch (Exception $e) {
+                        $error = "Email could not be sent. Mailer Error: {$mail->ErrorInfo}";
                     }
                 } else {
-                    $error = "<p class='alert alert-warning'>Please fill in all the fields</p>";
+                    $error = "<p class='alert alert-warning'>Registration Not Successful</p>";
                 }
+            } else {
+                $error = "<p class='alert alert-warning'>Please fill in all the fields</p>";
             }
         }
     }
 }
 ?>
+
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -104,6 +129,23 @@ if (isset($_REQUEST['reg'])) {
 	=========================================================-->
 <title>Homex - Real Estate Template</title>
  <style>
+     .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
         .alert-warning {
             color: #ff0000; /* Red for warning */
             font-size: 12px; /* Small font size */
@@ -213,8 +255,20 @@ if (isset($_REQUEST['reg'])) {
             </div>
         </div>
          <!--	Banner   --->
-		 
-		 
+	<!-- verifiations start -->	 
+<div id="verificationModal" class="modal">
+    <div class="modal-content">
+        <h2>Email Verification</h2>
+        <form id="verificationForm">
+            <div class="form-group">
+                <label for="verification_code">Enter Verification Code</label>
+                <input type="text" id="verification_code" class="form-control" placeholder="Enter code">
+            </div>
+            <button type="button" class="btn btn-success" id="verifyCodeBtn">Verify</button>
+        </form>
+    </div>
+</div>
+<!-- verifications -->
 		 
         <div class="page-wrappers login-body full-row bg-gray">
             <div class="login-wrapper">
@@ -314,6 +368,57 @@ if (isset($_REQUEST['reg'])) {
 
 <!--	Js Link
 ============================================================--> 
+<!-- verification start-->
+
+<script>
+$(document).ready(function() {
+    $('#registrationForm').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: 'register.php', // PHP file for processing the registration
+            type: 'POST',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // If registration is successful, show the verification modal
+                if (response.includes('Registration Successful')) {
+                    $('#verificationModal').fadeIn();
+                } else {
+                    alert(response); // Handle errors
+                }
+            }
+        });
+    });
+
+    // Handle the verification code submission
+    $('#verifyCodeBtn').on('click', function() {
+        var code = $('#verification_code').val();
+        $.ajax({
+            url: 'verify.php', // PHP file for handling code verification
+            type: 'POST',
+            data: { verification_code: code, email: $('#email').val() },
+            success: function(response) {
+                if (response === 'verified') {
+                    alert('Email verified successfully!');
+                    $('#verificationModal').fadeOut();
+                    // You can redirect to another page or log in the user here
+                } else {
+                    alert('Invalid verification code. Please try again.');
+                }
+            }
+        });
+    });
+});
+</script>
+
+<!-- verification end-->
+
+
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+
 
  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script src="js/jquery.min.js"></script> 
