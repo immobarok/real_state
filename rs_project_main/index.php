@@ -3,6 +3,7 @@ ini_set('session.cache_limiter','public');
 session_cache_limiter(false);
 session_start();
 include("config.php");
+include('session_timeout.php');
 ?>
 <!DOCTYPE html>
 <html lang="en">

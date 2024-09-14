@@ -5,6 +5,12 @@ include("config.php");
 $error = "";
 $msg = "";
 
+// Check if the session expired
+if (isset($_GET['session_expired']) && $_GET['session_expired'] == 'true') {
+    $error = "<p class='alert alert-warning'>Your session has expired due to inactivity. Please log in again.</p>";
+}
+
+// Handle login logic here
 if (isset($_REQUEST['login'])) {
     $email = $_REQUEST['email'];
     $plainPassword = $_REQUEST['pass'];
@@ -17,17 +23,17 @@ if (isset($_REQUEST['login'])) {
         if ($row) {
             // Check if the user is verified
             if ($row['is_verified'] == 1) {
-                // Verify the password using password_verify
+                // Verify the password
                 if (password_verify($plainPassword, $row['upass'])) {
                     $_SESSION['uid'] = $row['uid'];
                     $_SESSION['uemail'] = $email;
-                    header("location:index.php"); // Replace "index.php" with your desired landing page
+                    $_SESSION['last_activity'] = time();  // Set the last activity time during login
+                    header("location:index.php");  // Redirect after successful login
                 } else {
                     $error = "<p class='alert alert-warning'>Invalid password</p>";
                 }
             } else {
-                // User is not verified
-                $error = "<p class='alert alert-warning'>Your email is not verified. Please check your email for the verification link or <a href='verify.php?email=$email'>click here to resend the verification email</a>.</p>";
+                $error = "<p class='alert alert-warning'>Your email is not verified. Please check your email or <a href='resend_verification.php?email=$email'>resend verification email</a>.</p>";
             }
         } else {
             $error = "<p class='alert alert-warning'>User not found</p>";
